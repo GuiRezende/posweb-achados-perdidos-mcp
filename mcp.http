@@ -1,0 +1,31 @@
+### 1. Conectar ao Stream SSE do MCP
+GET http://localhost:8091/mcp/sse
+Accept: text/event-stream
+
+### 2. Enviar Inicialização JSON-RPC (Substitua o sessionId gerado no passo 1)
+POST http://localhost:8091/mcp/message?sessionId=SEU_SESSION_ID_AQUI
+Content-Type: application/json
+
+{
+  "jsonrpc": "2.0",
+  "id": 1,
+  "method": "initialize",
+  "params": {
+    "protocolVersion": "2024-11-05",
+    "capabilities": {},
+    "clientInfo": {
+      "name": "intellij-http-client",
+      "version": "1.0.0"
+    }
+  }
+}
+
+### 3. Listar Ferramentas do Objetos-MCP
+POST http://localhost:8091/mcp/message?sessionId=SEU_SESSION_ID_AQUI
+Content-Type: application/json
+
+{
+  "jsonrpc": "2.0",
+  "id": 2,
+  "method": "tools/list"
+}

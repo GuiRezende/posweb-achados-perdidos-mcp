@@ -1,0 +1,26 @@
+debug: true
+
+
+server:
+  port: 8092
+
+spring:
+  application:
+    name: ocorrencias-mcp
+  ai:
+    mcp:
+      server:
+        protocol: STREAMABLE
+        name: ocorrencias-mcp-server
+        version: 1.0.0
+        type: SYNC
+        resource-change-notification: true
+        tool-change-notification: true
+        prompt-change-notification: true
+        streamable-http:
+          mcp-endpoint: /api/mcp
+          keep-alive-interval: 30s
+
+services:
+  ocorrencias:
+    base-url: ${SERVICES_OCORRENCIAS_BASE_URL:http://localhost:8082}

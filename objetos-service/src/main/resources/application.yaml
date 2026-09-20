@@ -1,0 +1,19 @@
+spring:
+  application:
+    name: objetos-service
+  datasource:
+    url: jdbc:postgresql://localhost:5432/achadosperdidos?currentSchema=objeto-service
+    username: admin
+    password: admin
+    driver-class-name: org.postgresql.Driver
+  jpa:
+    open-in-view: false
+    show-sql: true
+    hibernate:
+      ddl-auto: update
+    properties:
+      hibernate:
+        format_sql: true
+
+server:
+  port: 8081

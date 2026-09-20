@@ -1,0 +1,88 @@
+* { box-sizing: border-box; }
+body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; margin: 0; background: #f4f6f8; color: #333; }
+
+header { background: #004080; color: white; padding: 1rem 2rem; display: flex; justify-content: space-between; align-items: center; }
+header h1 { margin: 0; font-size: 1.4rem; }
+
+.nav-tabs { display: flex; gap: 8px; }
+.tab-btn { background: rgba(255,255,255,0.15); border: none; color: white; padding: 8px 16px; border-radius: 4px; cursor: pointer; transition: 0.2s; }
+.tab-btn:hover { background: rgba(255,255,255,0.3); }
+.tab-btn.active { background: white; color: #004080; font-weight: bold; }
+
+.container { padding: 20px; max-width: 1200px; margin: 0 auto; }
+.tela { display: none; }
+.tela.active { display: block; }
+
+.dash-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
+.grid-container { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 20px; }
+
+.card { background: white; border-radius: 8px; padding: 16px; box-shadow: 0 2px 5px rgba(0,0,0,0.08); }
+.form-card { max-width: 650px; margin: 0 auto; background: white; padding: 24px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.08); }
+
+fieldset { border: 1px solid #ddd; padding: 12px; border-radius: 6px; margin-bottom: 16px; }
+legend { font-weight: bold; color: #004080; padding: 0 6px; }
+
+.form-group, .form-row { margin-bottom: 12px; display: flex; gap: 10px; }
+.form-row input, .form-row select { flex: 1; }
+
+input, select, textarea { width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 4px; font-size: 0.95rem; }
+textarea { resize: vertical; }
+
+.btn-primario { background: #004080; color: white; border: none; padding: 12px; width: 100%; border-radius: 4px; cursor: pointer; font-size: 1rem; font-weight: bold; }
+.btn-primario:hover { background: #002b55; }
+.btn-secundario { background: #6c757d; color: white; border: none; padding: 8px 14px; border-radius: 4px; cursor: pointer; }
+
+.status-indicator { padding: 4px 8px; border-radius: 4px; font-size: 0.8rem; font-weight: bold; display: inline-block; margin-bottom: 10px; }
+.status-indicator.ok { background: #d4edda; color: #155724; }
+.status-indicator.error { background: #f8d7da; color: #721c24; }
+.status-indicator.loading { background: #e2e3e5; color: #383d41; }
+
+.item-card { border-bottom: 1px solid #eee; padding: 8px 0; font-size: 0.9rem; }
+.error-text { color: #dc3545; font-size: 0.85rem; }
+
+.feedback-msg { margin-top: 16px; padding: 10px; border-radius: 4px; font-weight: bold; text-align: center; }
+.feedback-msg.sucesso { background: #d4edda; color: #155724; }
+.feedback-msg.erro { background: #f8d7da; color: #721c24; }
+
+/* Conversa */
+.chat-shell { height: min(680px, calc(100vh - 180px)); min-height: 520px; display: grid; grid-template-columns: 310px 1fr; background: #efeae2; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 18px rgba(0,0,0,.12); }
+.chat-sidebar { background: #fff; border-right: 1px solid #e4e4e4; }
+.chat-profile, .chat-header { height: 70px; display: flex; align-items: center; gap: 12px; padding: 12px 18px; background: #f0f2f5; }
+.chat-profile small, .chat-header small, .conversation small { display: block; color: #667781; margin-top: 3px; font-size: .78rem; }
+.chat-search { margin: 10px; padding: 10px 14px; border-radius: 8px; background: #f0f2f5; color: #667781; font-size: .85rem; }
+.conversation { width: 100%; display: flex; align-items: center; gap: 10px; padding: 13px 16px; border: 0; background: #fff; text-align: left; cursor: pointer; }
+.conversation.active { background: #f0f2f5; }
+.conversation-copy { flex: 1; }
+.conversation-time { align-self: flex-start; color: #667781; font-size: .72rem; }
+.avatar { width: 42px; height: 42px; display: grid; place-items: center; flex: 0 0 auto; border-radius: 50%; color: #fff; background: #00a884; font-weight: 700; font-size: .8rem; }
+.avatar-brand { background: #075e54; }
+.chat-panel { display: flex; min-width: 0; min-height: 0; flex-direction: column; background-color: #efeae2; background-image: radial-gradient(#d9d1c7 1px, transparent 1px); background-size: 18px 18px; }
+.chat-header { flex: 0 0 70px; background: #f0f2f5; }
+.chat-header small.typing { color: #00a884; }
+.chat-messages { flex: 1 1 auto; min-height: 0; overflow-y: auto; overscroll-behavior: contain; scroll-behavior: smooth; padding: 22px 7%; }
+.chat-day { width: max-content; margin: 0 auto 18px; padding: 6px 12px; border-radius: 7px; background: #fff; color: #667781; font-size: .7rem; box-shadow: 0 1px 1px #0001; }
+.message-row { display: flex; margin: 7px 0; }
+.message-row.sent { justify-content: flex-end; }
+.message-bubble { max-width: min(650px, 78%); padding: 9px 12px 6px; border-radius: 8px; background: #fff; color: #111b21; line-height: 1.4; box-shadow: 0 1px 1px #0002; white-space: pre-wrap; }
+.message-row.sent .message-bubble { background: #d9fdd3; }
+.message-row .error-bubble { background: #ffe2e2; }
+.message-meta { display: block; margin-top: 3px; color: #667781; font-size: .66rem; text-align: right; }
+.chat-suggestions { display: flex; gap: 8px; padding: 8px 7% 0; overflow-x: auto; }
+.chat-suggestions.hidden { display: none; }
+.chat-suggestions button { border: 1px solid #b7d9d1; border-radius: 16px; padding: 7px 12px; background: #fff; color: #075e54; white-space: nowrap; cursor: pointer; }
+.chat-composer { flex: 0 0 auto; display: flex; align-items: center; gap: 8px; padding: 12px 7%; background: #f0f2f5; }
+.chat-composer input { flex: 1; border: 0; border-radius: 22px; padding: 12px 16px; background: #fff; outline: none; }
+.emoji-button, .send-button { border: 0; background: transparent; color: #667781; font-size: 1.35rem; cursor: pointer; }
+.send-button { width: 42px; height: 42px; border-radius: 50%; color: #fff; background: #00a884; }
+
+@media (max-width: 760px) {
+  header { display: block; padding: 14px; }
+  header h1 { margin-bottom: 12px; }
+  .nav-tabs { overflow-x: auto; padding-bottom: 2px; }
+  .tab-btn { white-space: nowrap; }
+  .container { padding: 12px; }
+  .chat-shell { grid-template-columns: 1fr; min-height: calc(100vh - 150px); height: calc(100vh - 150px); }
+  .chat-sidebar { display: none; }
+  .chat-messages { padding: 18px 4%; }
+  .chat-composer, .chat-suggestions { padding-left: 4%; padding-right: 4%; }
+}
