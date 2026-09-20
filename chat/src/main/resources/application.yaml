@@ -1,0 +1,25 @@
+server:
+  port: 8090
+
+spring:
+  application:
+    name: chat
+  ai:
+    google:
+      genai:
+        api-key: ${GOOGLE_API_KEY:}
+        chat:
+          model: ${GOOGLE_MODEL:gemini-3.5-flash-lite}
+    mcp:
+      client:
+        streamable-http:
+          connections:
+            objetos:
+              url: ${MCP_OBJETOS_URL:http://localhost:8091}
+              endpoint: /api/mcp
+            ocorrencias-mcp:
+              url: ${MCP_OCORRENCIAS_URL:http://localhost:8092}
+              endpoint: /api/mcp
+            reivindicacoes-mcp:
+              url: ${MCP_REIVINDICACOES_URL:http://localhost:8093}
+              endpoint: /api/mcp

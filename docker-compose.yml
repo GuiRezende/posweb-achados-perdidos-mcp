@@ -1,0 +1,190 @@
+services:
+  postgresql:
+    image: bitnami/postgresql:latest
+    container_name: postgresql
+    hostname: postgresql
+    restart: unless-stopped
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRESQL_USERNAME: admin
+      POSTGRESQL_PASSWORD: admin
+      POSTGRESQL_DATABASE: achadosperdidos
+    volumes:
+      - achadosperdidos_pg_data:/bitnami/postgresql
+      - ./achadosperdidos.sql:/docker-entrypoint-initdb.d/achadosperdidos.sql
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "pg_isready -h localhost -U admin -d achadosperdidos"
+        ]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+    networks:
+      - rede-achadosperdidos
+
+
+  objetos-service:
+    build:
+      context: ./objetos-service
+      dockerfile: Dockerfile
+    container_name: objetos-service
+    restart: unless-stopped
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgresql:5432/achadosperdidos?currentSchema=objetos_service
+      SPRING_DATASOURCE_USERNAME: admin
+      SPRING_DATASOURCE_PASSWORD: admin
+    ports:
+      - "8081:8081"
+    depends_on:
+      postgresql:
+        condition: service_healthy
+    networks:
+      - rede-achadosperdidos
+
+  ocorrencias-service:
+    build:
+      context: ./ocorrencias-service
+      dockerfile: Dockerfile
+    container_name: ocorrencias-service
+    restart: unless-stopped
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgresql:5432/achadosperdidos?currentSchema=ocorrencias_service
+      SPRING_DATASOURCE_USERNAME: admin
+      SPRING_DATASOURCE_PASSWORD: admin
+      SERVICES_OBJETOS_BASE_URL: http://objetos-service:8081
+    ports:
+      - "8082:8082"
+    depends_on:
+      postgresql:
+        condition: service_healthy
+      objetos-service:
+        condition: service_started
+    networks:
+      - rede-achadosperdidos
+
+  reivindicacoes-service:
+    build:
+      context: ./reivindicacoes-service
+      dockerfile: Dockerfile
+    container_name: reivindicacoes-service
+    restart: unless-stopped
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgresql:5432/achadosperdidos?currentSchema=reivindicacoes_service
+      SPRING_DATASOURCE_USERNAME: admin
+      SPRING_DATASOURCE_PASSWORD: admin
+      SERVICES_OCORRENCIAS_URL: http://ocorrencias-service:8082 # <--- ADICIONADO
+    ports:
+      - "8083:8083"
+    depends_on:
+      postgresql:
+        condition: service_healthy
+      ocorrencias-service: # <--- ADICIONADO
+        condition: service_started
+    networks:
+      - rede-achadosperdidos
+
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: frontend-web
+    restart: unless-stopped
+    ports:
+      - "3000:80"
+    depends_on:
+      objetos-service:
+        condition: service_started
+      ocorrencias-service:
+        condition: service_started
+      reivindicacoes-service:
+        condition: service_started
+      chat:
+        condition: service_started
+    networks:
+      - rede-achadosperdidos
+
+  chat:
+    build:
+      context: ./chat
+      dockerfile: Dockerfile
+    container_name: chat
+    restart: unless-stopped
+    environment:
+      GOOGLE_API_KEY: ${GOOGLE_API_KEY}
+      MCP_OBJETOS_URL: http://objetos-mcp:8091
+      MCP_OCORRENCIAS_URL: http://ocorrencias-mcp:8092
+      MCP_REIVINDICACOES_URL: http://reivindicacoes-mcp:8093
+    ports:
+      - "8090:8090"
+    depends_on:
+      objetos-mcp:
+        condition: service_started
+      ocorrencias-mcp:
+        condition: service_started
+      reivindicacoes-mcp:
+        condition: service_started
+    networks:
+      - rede-achadosperdidos
+
+
+################## MCP server #################
+  objetos-mcp:
+    build:
+      context: ./objetos-mcp
+      dockerfile: Dockerfile
+    container_name: objetos-mcp
+    restart: unless-stopped
+    environment:
+      SERVICES_OBJETOS_BASE_URL: http://objetos-service:8081
+    ports:
+      - "8091:8091"
+    depends_on:
+      objetos-service:
+        condition: service_started
+    networks:
+      - rede-achadosperdidos
+
+  ocorrencias-mcp:
+    build:
+      context: ./ocorrencias-mcp
+      dockerfile: Dockerfile
+    container_name: ocorrencias-mcp
+    restart: unless-stopped
+    environment:
+      SERVICES_OCORRENCIAS_BASE_URL: http://ocorrencias-service:8082
+    ports:
+      - "8092:8092"
+    depends_on:
+      ocorrencias-service:
+        condition: service_started
+    networks:
+      - rede-achadosperdidos
+
+  reivindicacoes-mcp:
+    build:
+      context: ./reivindicacoes-mcp
+      dockerfile: Dockerfile
+    container_name: reivindicacoes-mcp
+    restart: unless-stopped
+    environment:
+      SERVICES_REIVINDICACOES_BASE_URL: http://reivindicacoes-service:8083
+    ports:
+      - "8093:8093"
+    depends_on:
+      reivindicacoes-service:
+        condition: service_started
+    networks:
+      - rede-achadosperdidos
+
+
+volumes:
+  achadosperdidos_pg_data:
+
+networks:
+  rede-achadosperdidos:
+    driver: bridge

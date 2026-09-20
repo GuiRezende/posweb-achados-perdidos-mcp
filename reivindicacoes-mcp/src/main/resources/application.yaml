@@ -1,0 +1,23 @@
+server:
+  port: 8093
+
+spring:
+  application:
+    name: reivindicacoes-mcp
+  ai:
+    mcp:
+      server:
+        protocol: STREAMABLE
+        name: reivindicacoes-mcp-server
+        version: 1.0.0
+        type: SYNC
+        resource-change-notification: true
+        tool-change-notification: true
+        prompt-change-notification: true
+        streamable-http:
+          mcp-endpoint: /api/mcp
+          keep-alive-interval: 30s
+
+services:
+  reivindicacoes:
+    base-url: ${SERVICES_REIVINDICACOES_BASE_URL:http://localhost:8083}

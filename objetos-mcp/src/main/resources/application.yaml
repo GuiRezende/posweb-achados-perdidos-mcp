@@ -1,0 +1,23 @@
+server:
+  port: 8091
+
+spring:
+  application:
+    name: objetos-mcp
+  ai:
+    mcp:
+      server:
+        protocol: STREAMABLE
+        name: objetos-mcp-server
+        version: 1.0.0
+        type: SYNC
+        resource-change-notification: true
+        tool-change-notification: true
+        prompt-change-notification: true
+        streamable-http:
+          mcp-endpoint: /api/mcp
+          keep-alive-interval: 30s
+
+services:
+  objetos:
+    base-url: ${SERVICES_OBJETOS_BASE_URL:http://localhost:8081}

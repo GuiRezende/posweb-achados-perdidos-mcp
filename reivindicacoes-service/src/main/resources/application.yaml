@@ -1,0 +1,23 @@
+spring:
+  application:
+    name: reivindicacoes-service
+  datasource:
+    url: jdbc:postgresql://localhost:5432/achadosperdidos?currentSchema=reivindicacoes_service
+    username: admin
+    password: admin
+    driver-class-name: org.postgresql.Driver
+  jpa:
+    open-in-view: false
+    show-sql: true
+    hibernate:
+      ddl-auto: update
+    properties:
+      hibernate:
+        format_sql: true
+
+services:
+  ocorrencias:
+    url: ${SERVICES_OCORRENCIAS_URL:http://localhost:8082}
+
+server:
+  port: 8083

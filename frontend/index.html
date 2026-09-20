@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title>Achados e Perdidos - IFBA</title>
+    <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+<header>
+    <h1>Achados e Perdidos - IFBA</h1>
+    <nav class="nav-tabs">
+        <button class="tab-btn active" onclick="mudarAba('dashboard')">Dashboard</button>
+        <button class="tab-btn" onclick="mudarAba('cadastrar')">Registrar Ocorrência</button>
+        <button class="tab-btn" onclick="mudarAba('reivindicar')">Reivindicar Objeto</button>
+        <button class="tab-btn" onclick="mudarAba('chat')">Assistente IA</button>
+    </nav>
+</header>
+
+<main class="container">
+    <!-- TELA 1: DASHBOARD RESILIENTE -->
+    <section id="tela-dashboard" class="tela active">
+        <div class="dash-header">
+            <h2>Visão Geral do Sistema</h2>
+            <button onclick="carregarDashboard()" class="btn-secundario">Atualizar Dados</button>
+        </div>
+
+        <div class="grid-container">
+            <!-- Coluna Objetos -->
+            <div class="card" id="card-objetos">
+                <h3>Objetos (8081)</h3>
+                <div id="status-objetos" class="status-indicator">Carregando...</div>
+                <div id="conteudo-objetos" class="lista-itens"></div>
+            </div>
+
+            <!-- Coluna Ocorrências -->
+            <div class="card" id="card-ocorrencias">
+                <h3>Ocorrências (8082)</h3>
+                <div id="status-ocorrencias" class="status-indicator">Carregando...</div>
+                <div id="conteudo-ocorrencias" class="lista-itens"></div>
+            </div>
+
+            <!-- Coluna Reivindicações -->
+            <div class="card" id="card-reivindicacoes">
+                <h3>Reivindicações (8083)</h3>
+                <div id="status-reivindicacoes" class="status-indicator">Carregando...</div>
+                <div id="conteudo-reivindicacoes" class="lista-itens"></div>
+            </div>
+        </div>
+    </section>
+
+    <!-- TELA 2: CADASTRO DE OCORRÊNCIA -->
+    <section id="tela-cadastrar" class="tela">
+        <h2>Registrar Objeto Perdido ou Encontrado</h2>
+        <form id="form-ocorrencia" onsubmit="processarOcorrencia(event)" class="form-card">
+            <div class="form-group">
+                <label for="oc-tipo">Tipo de Ocorrência:</label>
+                <select id="oc-tipo" required>
+                    <option value="PERDIDO">Perdi um objeto</option>
+                    <option value="ENCONTRADO">Encontrei um objeto</option>
+                </select>
+            </div>
+
+            <fieldset>
+                <legend>Dados do Objeto</legend>
+                <div class="form-row">
+                    <input type="text" id="obj-nome" placeholder="Nome do Objeto (ex: Mochila)" required />
+                    <select id="obj-categoria" required>
+                        <option value="ELETRONICO">Eletrônico</option>
+                        <option value="VESTUARIO">Vestuário</option>
+                        <option value="ACESSORIO">Acessório</option>
+                        <option value="DOCUMENTO">Documento</option>
+                        <option value="OUTRO">Outro</option>
+                    </select>
+                </div>
+                <div class="form-row">
+                    <input type="text" id="obj-cor" placeholder="Cor (ex: Preta)" required />
+                    <input type="text" id="obj-marca" placeholder="Marca (opcional)" />
+                </div>
+                <input type="text" id="obj-descricao" placeholder="Descrição detalhada" required />
+                <input type="text" id="obj-caracteristicas" placeholder="Características marcantes (ex: chaveiro azul)" />
+            </fieldset>
+
+            <fieldset>
+                <legend>Dados do Local e Data</legend>
+                <div class="form-row">
+                    <input type="text" id="oc-local" placeholder="Local (ex: Laboratório 3)" required />
+                    <input type="date" id="oc-data" required />
+                </div>
+                <input type="text" id="oc-observacoes" placeholder="Observações do local" />
+            </fieldset>
+
+            <fieldset>
+                <legend>Contato do Informante</legend>
+                <div class="form-row">
+                    <input type="text" id="oc-contato-nome" placeholder="Seu Nome Completo" required />
+                    <input type="tel" id="oc-contato-tel" placeholder="Telefone / WhatsApp (ex: 77999998888)" required />
+                </div>
+                <input type="email" id="oc-contato-email" placeholder="E-mail de Contato" required />
+            </fieldset>
+
+            <button type="submit" id="btn-salvar-oc" class="btn-primario">Cadastrar Ocorrência</button>
+        </form>
+        <div id="msg-cadastrar" class="feedback-msg"></div>
+    </section>
+
+    <!-- TELA 3: REIVINDICAÇÃO -->
+    <section id="tela-reivindicar" class="tela">
+        <h2>Solicitar Devolução / Reivindicação</h2>
+        <form id="form-reivindicacao" onsubmit="processarReivindicacao(event)" class="form-card">
+            <div class="form-group">
+                <label for="rev-ocorrencia-id">Selecione a Ocorrência (ID):</label>
+                <input type="number" id="rev-ocorrencia-id" placeholder="Informe o ID da Ocorrência" required />
+            </div>
+
+            <fieldset>
+                <legend>Dados do Solicitante</legend>
+                <input type="text" id="rev-nome" placeholder="Seu Nome Completo" required />
+                <input type="email" id="rev-email" placeholder="Seu E-mail Institucional" required />
+                <textarea id="rev-comprovacao" placeholder="Descreva comprovações de que o objeto é seu (ex: número de série, marcas internas)" required rows="4"></textarea>
+            </fieldset>
+
+            <button type="submit" id="btn-salvar-rev" class="btn-primario">Enviar Reivindicação</button>
+        </form>
+        <div id="msg-reivindicar" class="feedback-msg"></div>
+    </section>
+
+    <section id="tela-chat" class="tela">
+        <div class="chat-shell">
+            <aside class="chat-sidebar">
+                <div class="chat-profile">
+                    <div class="avatar avatar-brand">A</div>
+                    <div>
+                        <strong>Achados e Perdidos</strong>
+                        <small>Assistente virtual</small>
+                    </div>
+                </div>
+                <div class="chat-search">🔎 <span>Pesquisar conversa</span></div>
+                <button class="conversation active">
+                    <div class="avatar">IA</div>
+                    <div class="conversation-copy">
+                        <strong>Assistente do IFBA</strong>
+                        <small>Consulte objetos e ocorrências</small>
+                    </div>
+                    <span class="conversation-time">agora</span>
+                </button>
+            </aside>
+            <div class="chat-panel">
+                <div class="chat-header">
+                    <div class="avatar">IA</div>
+                    <div>
+                        <strong>Assistente do IFBA</strong>
+                        <small id="chat-status">online</small>
+                    </div>
+                </div>
+                <div id="chat-messages" class="chat-messages" aria-live="polite">
+                    <div class="chat-day">HOJE</div>
+                    <div class="message-row received">
+                        <div class="message-bubble">Olá! Sou o assistente de Achados e Perdidos. Posso consultar objetos, ocorrências e reivindicações para você.<span class="message-meta">agora</span></div>
+                    </div>
+                </div>
+                <div id="chat-suggestions" class="chat-suggestions">
+                    <button type="button" onclick="usarSugestao('Quais objetos foram encontrados?')">Objetos encontrados</button>
+                    <button type="button" onclick="usarSugestao('Liste as ocorrências abertas.')">Ocorrências abertas</button>
+                    <button type="button" onclick="usarSugestao('Quais reivindicações estão pendentes?')">Reivindicações pendentes</button>
+                </div>
+                <form id="chat-form" class="chat-composer">
+                    <button type="button" class="emoji-button" aria-label="Emojis">☺</button>
+                    <input id="chat-input" type="text" autocomplete="off" placeholder="Digite uma mensagem" aria-label="Mensagem para o assistente" />
+                    <button class="send-button" type="submit" aria-label="Enviar mensagem">➤</button>
+                </form>
+            </div>
+        </div>
+    </section>
+</main>
+
+<script src="app.js?v=2"></script>
+</body>
+</html>
