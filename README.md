@@ -1,524 +1,292 @@
-# Achados e Perdidos - IFBA
+# Achados e Perdidos — IFBA
 
-Projeto acadêmico desenvolvido para a disciplina **Desenvolvimento de Aplicações Orientadas a Serviços** do IFBA.
+Sistema distribuído para registro e consulta de objetos perdidos ou encontrados, desenvolvido para a disciplina **Desenvolvimento de Aplicações Orientadas a Serviços** da pós-graduação em Desenvolvimento Web do IFBA.
 
-O sistema permite registrar e consultar objetos perdidos ou encontrados no campus, acompanhar ocorrências e controlar solicitações de recuperação e devolução. A solução é composta por APIs REST conteinerizadas, cliente web resiliente, servidores MCP e um chat integrado a um modelo de IA.
+A solução combina APIs REST, um cliente web resiliente, servidores MCP e um chat com IA capaz de consultar os serviços por meio do **Model Context Protocol (MCP)**.
 
-## 1. Objetivos
+> Este README documenta a estrutura e a execução do código atualmente presente no repositório.
 
-- Criar três serviços web REST independentes.
-- Executar cada serviço em seu próprio contêiner Docker.
-- Criar um cliente web que consuma todos os serviços.
-- Manter o cliente funcionando quando um dos serviços estiver indisponível.
-- Criar um servidor MCP correspondente para cada serviço REST.
-- Expor pelo menos dois endpoints de cada serviço por meio de ferramentas MCP.
-- Integrar as ferramentas MCP a um chat com OpenAI ou Google AI.
+## Visão geral
 
-## 2. Escopo definitivo
+O sistema é organizado em três domínios:
 
-O projeto possui três domínios principais:
+- **Objetos:** cadastro e consulta das características dos itens.
+- **Ocorrências:** registro de objetos perdidos ou encontrados.
+- **Reivindicações:** solicitação de devolução e comprovação de propriedade.
 
-1. **Objetos:** características físicas dos itens.
-2. **Ocorrências:** registro de onde e quando um item foi perdido ou encontrado.
-3. **Reivindicações:** solicitação, análise e conclusão da devolução ao possível proprietário.
+Além das APIs REST, o projeto possui:
 
-Locais não serão um serviço separado. O local será armazenado na ocorrência. Também não haverá cadastro completo de usuários na primeira versão; os dados mínimos do solicitante ficarão na reivindicação.
+- um frontend estático servido pelo Nginx;
+- um dashboard que consulta os três serviços de forma independente;
+- um chat integrado ao Google Gemini por Spring AI;
+- três servidores MCP, um para cada domínio;
+- PostgreSQL com um schema separado para cada serviço.
 
-## 3. Arquitetura
+## Arquitetura
 
 ```mermaid
 flowchart LR
-    WEB[Cliente web] --> OBJ[Objetos REST]
-    WEB --> OCO[Ocorrências REST]
-    WEB --> REI[Reivindicações REST]
+    WEB[Frontend Nginx] --> OBJ[objetos-service\nREST :8081]
+    WEB --> OCO[ocorrencias-service\nREST :8082]
+    WEB --> REI[reivindicacoes-service\nREST :8083]
+    WEB --> CHAT[chat\n:8090]
 
-    CHAT[Chat com IA] --> OMCP[Objetos MCP]
-    CHAT --> CMCP[Ocorrências MCP]
-    CHAT --> RMCP[Reivindicações MCP]
+    CHAT --> OMCP[objetos-mcp\n:8091]
+    CHAT --> CMCP[ocorrencias-mcp\n:8092]
+    CHAT --> RMCP[reivindicacoes-mcp\n:8093]
 
     OMCP --> OBJ
     CMCP --> OCO
     RMCP --> REI
+
+    OBJ --> PG[(PostgreSQL :5432)]
+    OCO --> PG
+    REI --> PG
 ```
 
-Cada aplicação terá seu próprio `pom.xml`, processo e contêiner. Todas permanecerão no mesmo repositório.
+O frontend usa `Promise.allSettled()` para carregar objetos, ocorrências e reivindicações separadamente. Assim, a indisponibilidade de uma API não impede a visualização das demais áreas do dashboard.
 
-## 4. Estrutura do repositório
+## Estrutura do repositório
 
 ```text
-achadosperdidos/
-├── objetos-service/
-├── ocorrencias-service/
-├── reivindicacoes-service/
-├── objetos-mcp/
-├── ocorrencias-mcp/
-├── reivindicacoes-mcp/
-├── frontend/                 # será criado posteriormente
-├── chat/                     # será criado posteriormente
-├── database/                 # scripts de inicialização
-├── docker-compose.yml        # será criado posteriormente
-├── .env.example
-├── .gitignore
+.
+├── objetos-service/          # API REST de objetos
+├── ocorrencias-service/      # API REST de ocorrências
+├── reivindicacoes-service/   # API REST de reivindicações
+├── objetos-mcp/              # Servidor MCP do domínio de objetos
+├── ocorrencias-mcp/          # Servidor MCP do domínio de ocorrências
+├── reivindicacoes-mcp/       # Servidor MCP do domínio de reivindicações
+├── chat/                     # Chat Spring Boot + Google Gemini + MCP Client
+├── frontend/                 # HTML, CSS e JavaScript do cliente web
+├── embedding/                # Configuração de dimensões de modelos de embedding
+├── achadosperdidos.sql       # Criação dos schemas do PostgreSQL
+├── docker-compose.yml        # Orquestração de toda a solução
 └── README.md
 ```
 
-## 5. Tecnologias
+## Tecnologias
 
-- Java 21
-- Spring Boot
+- Java 25
+- Spring Boot 4.1.1
+- Spring AI 2.0.1
 - Spring Web MVC
 - Spring Data JPA
-- Jakarta Validation
 - PostgreSQL
 - Maven
 - Docker e Docker Compose
-- Spring Boot Actuator
-- Spring AI MCP
-- HTML, CSS e JavaScript no cliente web
-- OpenAI ou Google AI no chat
-
-## 6. Portas planejadas
-
-| Aplicação | Porta local |
-|---|---:|
-| `objetos-service` | 8081 |
-| `ocorrencias-service` | 8082 |
-| `reivindicacoes-service` | 8083 |
-| `objetos-mcp` | 8101 |
-| `ocorrencias-mcp` | 8102 |
-| `reivindicacoes-mcp` | 8103 |
-| `chat` | 8090 |
-| `frontend` | 3000 |
-| PostgreSQL | 5432 |
-
-## 7. Serviços REST
-
-### 7.1. Objetos
-
-Responsável somente pelas características do objeto.
-
-Campos iniciais:
-
-| Campo | Tipo | Obrigatório | Exemplo |
-|---|---|---:|---|
-| `id` | `Long` | gerado | `10` |
-| `nome` | `String` | sim | `Mochila` |
-| `categoria` | `CategoriaObjeto` | sim | `ACESSORIO` |
-| `cor` | `String` | sim | `Preta` |
-| `marca` | `String` | não | `Dell` |
-| `descricao` | `String` | sim | `Mochila com dois compartimentos` |
-| `caracteristicas` | `String` | não | `Possui um chaveiro azul` |
-
-Endpoints planejados:
-
-| Método | Rota | Finalidade |
-|---|---|---|
-| `POST` | `/objetos` | Cadastrar objeto |
-| `GET` | `/objetos` | Listar objetos |
-| `GET` | `/objetos/{id}` | Buscar por identificador |
-| `GET` | `/objetos?categoria={categoria}` | Filtrar por categoria |
-| `PUT` | `/objetos/{id}` | Atualizar objeto |
-
-Exemplo:
-
-```json
-{
-  "nome": "Mochila",
-  "categoria": "ACESSORIO",
-  "cor": "Preta",
-  "marca": "Dell",
-  "descricao": "Mochila com dois compartimentos",
-  "caracteristicas": "Possui um chaveiro azul"
-}
-```
-
-### 7.2. Ocorrências
-
-Responsável por registrar a perda ou localização de um objeto.
-
-Campos iniciais:
-
-| Campo | Tipo | Obrigatório | Exemplo |
-|---|---|---:|---|
-| `id` | `Long` | gerado | `20` |
-| `objetoId` | `Long` | sim | `10` |
-| `tipo` | `TipoOcorrencia` | sim | `ENCONTRADO` |
-| `data` | `LocalDate` | sim | `2026-09-07` |
-| `local` | `String` | sim | `Laboratório 3` |
-| `observacoes` | `String` | não | `Próximo ao computador 15` |
-| `status` | `StatusOcorrencia` | sim | `ATIVA` |
-
-Tipos:
-
-```text
-PERDIDO
-ENCONTRADO
-```
-
-Status:
-
-```text
-ATIVA
-RESOLVIDA
-CANCELADA
-```
-
-Endpoints planejados:
-
-| Método | Rota | Finalidade |
-|---|---|---|
-| `POST` | `/ocorrencias` | Registrar ocorrência |
-| `GET` | `/ocorrencias` | Listar ocorrências |
-| `GET` | `/ocorrencias/{id}` | Buscar por identificador |
-| `GET` | `/ocorrencias?tipo={tipo}` | Filtrar por tipo |
-| `GET` | `/ocorrencias?status={status}` | Filtrar por status |
-| `PATCH` | `/ocorrencias/{id}/status` | Alterar status |
-
-Exemplo:
-
-```json
-{
-  "objetoId": 10,
-  "tipo": "ENCONTRADO",
-  "data": "2026-09-07",
-  "local": "Laboratório 3",
-  "observacoes": "Encontrado próximo ao computador 15",
-  "status": "ATIVA"
-}
-```
-
-### 7.3. Reivindicações
-
-Responsável por registrar e acompanhar a solicitação de recuperação de um objeto.
-
-Campos iniciais:
-
-| Campo | Tipo | Obrigatório | Exemplo |
-|---|---|---:|---|
-| `id` | `Long` | gerado | `30` |
-| `ocorrenciaId` | `Long` | sim | `20` |
-| `nomeSolicitante` | `String` | sim | `Guilherme` |
-| `email` | `String` | sim | `usuario@ifba.edu.br` |
-| `comprovacao` | `String` | sim | `A mochila possui um chaveiro azul` |
-| `status` | `StatusReivindicacao` | sim | `PENDENTE` |
-| `dataSolicitacao` | `LocalDateTime` | gerado | `2026-09-07T20:00:00` |
-| `dataDevolucao` | `LocalDateTime` | não | `null` |
-
-Status:
-
-```text
-PENDENTE
-APROVADA
-REJEITADA
-DEVOLVIDA
-```
-
-Endpoints planejados:
-
-| Método | Rota | Finalidade |
-|---|---|---|
-| `POST` | `/reivindicacoes` | Criar solicitação |
-| `GET` | `/reivindicacoes` | Listar solicitações |
-| `GET` | `/reivindicacoes/{id}` | Buscar por identificador |
-| `GET` | `/reivindicacoes?status={status}` | Filtrar por status |
-| `PATCH` | `/reivindicacoes/{id}/aprovar` | Aprovar solicitação |
-| `PATCH` | `/reivindicacoes/{id}/rejeitar` | Rejeitar solicitação |
-| `PATCH` | `/reivindicacoes/{id}/devolver` | Confirmar devolução |
-
-Exemplo:
-
-```json
-{
-  "ocorrenciaId": 20,
-  "nomeSolicitante": "Guilherme",
-  "email": "usuario@ifba.edu.br",
-  "comprovacao": "A mochila possui um chaveiro azul"
-}
-```
-
-## 8. Persistência
-
-Para manter o projeto simples e preservar a separação lógica, será usado inicialmente um contêiner PostgreSQL com três bancos:
-
-```text
-objetos_db
-ocorrencias_db
-reivindicacoes_db
-```
-
-Cada serviço acessará somente seu próprio banco. Não serão criadas chaves estrangeiras entre bancos; referências entre serviços serão armazenadas como identificadores (`objetoId` e `ocorrenciaId`).
-
-As validações entre domínios poderão ser feitas por chamadas HTTP, sem acesso direto ao banco de outro serviço.
-
-## 9. Dependências
-
-### Serviços REST
-
-Adicionar em cada um dos três serviços:
-
-- Spring Web
-- Spring Data JPA
-- PostgreSQL Driver
-- Validation
+- HTML, CSS, JavaScript e Nginx
+- Google Gemini via Spring AI
+- Model Context Protocol (MCP)
 - Lombok
-- Spring Boot Actuator
-- Spring Boot Starter Test
 
-### Servidores MCP
+## Portas e serviços
 
-Os MCPs não terão banco de dados. Cada um chamará seu serviço REST correspondente.
+| Serviço | Descrição | Porta |
+|---|---|---:|
+| `postgresql` | Banco de dados PostgreSQL | `5432` |
+| `objetos-service` | API REST de objetos | `8081` |
+| `ocorrencias-service` | API REST de ocorrências | `8082` |
+| `reivindicacoes-service` | API REST de reivindicações | `8083` |
+| `chat` | API do chat com IA | `8090` |
+| `objetos-mcp` | MCP de objetos | `8091` |
+| `ocorrencias-mcp` | MCP de ocorrências | `8092` |
+| `reivindicacoes-mcp` | MCP de reivindicações | `8093` |
+| `frontend` | Cliente web servido pelo Nginx | `3000` |
 
-Dependências principais:
+## Pré-requisitos
 
-- Spring AI MCP Server WebMVC
-- Spring Boot Actuator
-- Spring Boot Starter Test
-- Lombok, opcional
+Para executar a aplicação completa, instale:
 
-Para comunicação remota, utilizar o starter WebMVC e o protocolo `STREAMABLE`:
+- Docker Engine;
+- Docker Compose;
+- Git.
 
-```xml
-<dependency>
-    <groupId>org.springframework.ai</groupId>
-    <artifactId>spring-ai-starter-mcp-server-webmvc</artifactId>
-</dependency>
+O Java 25 e o Maven são necessários apenas para executar ou compilar os módulos individualmente fora dos contêineres.
+
+## Configuração da chave da IA
+
+O serviço `chat` utiliza a variável `GOOGLE_API_KEY`. Crie um arquivo `.env` na raiz do projeto:
+
+```dotenv
+GOOGLE_API_KEY=sua-chave-do-google-gemini
 ```
 
-Não usar o transporte SSE antigo. Antes da implementação, conferir se as versões escolhidas de Spring Boot e Spring AI são compatíveis.
+A chave não deve ser adicionada ao Git. O Compose encaminha essa variável para o contêiner do chat.
 
-### Chat
+## Executando com Docker Compose
 
-Se o chat for implementado em Java, ele deverá utilizar:
+Na raiz do repositório, execute:
 
-- Spring AI MCP Client
-- starter do provedor escolhido, OpenAI ou Google AI
-- Spring Web, caso exponha endpoints para o frontend
+```bash
+docker compose up -d --build
+```
 
-Chaves de API nunca devem ser versionadas. Utilizar variáveis de ambiente e manter apenas exemplos em `.env.example`.
+O Compose irá:
 
-## 10. Ferramentas MCP mínimas
+1. iniciar o PostgreSQL;
+2. executar `achadosperdidos.sql`, criando os schemas `objetos_service`, `ocorrencias_service` e `reivindicacoes_service`;
+3. iniciar as três APIs REST;
+4. iniciar os três servidores MCP;
+5. iniciar o chat com IA;
+6. publicar o frontend na porta `3000`.
 
-Cada MCP precisa acessar pelo menos dois endpoints de seu serviço REST correspondente.
+Acesse:
 
-### Objetos MCP
+- **Aplicação web:** http://localhost:3000
+- **API de objetos:** http://localhost:8081
+- **API de ocorrências:** http://localhost:8082
+- **API de reivindicações:** http://localhost:8083
+- **Chat:** http://localhost:8090
 
-| Ferramenta | Endpoint REST |
-|---|---|
-| `listar_objetos` | `GET /objetos` |
-| `buscar_objeto_por_id` | `GET /objetos/{id}` |
-| `buscar_objetos_por_categoria` | `GET /objetos?categoria={categoria}` |
+Para acompanhar os logs:
 
-### Ocorrências MCP
+```bash
+docker compose logs -f
+```
 
-| Ferramenta | Endpoint REST |
-|---|---|
-| `listar_ocorrencias` | `GET /ocorrencias` |
-| `buscar_ocorrencia_por_id` | `GET /ocorrencias/{id}` |
-| `listar_ocorrencias_ativas` | `GET /ocorrencias?status=ATIVA` |
+Para verificar o estado dos contêineres:
 
-### Reivindicações MCP
+```bash
+docker compose ps
+```
 
-| Ferramenta | Endpoint REST |
-|---|---|
-| `listar_reivindicacoes` | `GET /reivindicacoes` |
-| `buscar_reivindicacao_por_id` | `GET /reivindicacoes/{id}` |
-| `listar_reivindicacoes_pendentes` | `GET /reivindicacoes?status=PENDENTE` |
+Para interromper a aplicação:
 
-Inicialmente, as ferramentas MCP serão somente de consulta. Ferramentas que modificam dados poderão ser adicionadas depois, se houver tempo.
+```bash
+docker compose down
+```
 
-## 11. Cliente web resiliente
+Para remover também os dados persistidos do PostgreSQL:
 
-O cliente web terá três áreas independentes:
+```bash
+docker compose down -v
+```
 
-- objetos;
-- ocorrências;
-- reivindicações.
+> O último comando apaga o volume `achadosperdidos_pg_data` e todos os dados locais do banco.
 
-Regras de resiliência:
+## APIs REST
 
-1. Fazer uma requisição separada para cada serviço.
-2. Não usar uma única operação que falhe quando qualquer serviço estiver fora do ar.
-3. Exibir erro somente na área correspondente ao serviço indisponível.
-4. Manter as demais áreas funcionando normalmente.
-5. Tentar novamente após um intervalo ou por meio de um botão.
-6. Quando o serviço retornar, atualizar sua área automaticamente.
+As APIs são aplicações Spring Boot independentes, cada uma com seu próprio `pom.xml`, `Dockerfile` e configuração de persistência.
 
-Em JavaScript, preferir `Promise.allSettled()` em vez de `Promise.all()` para carregamentos simultâneos independentes.
+### Objetos
 
-## 12. Organização interna dos serviços
+Base URL: `http://localhost:8081`
 
-Estrutura sugerida para cada API REST:
+O frontend utiliza o recurso `/objetos` para:
+
+- listar objetos (`GET /objetos`);
+- localizar um objeto por características;
+- cadastrar um objeto (`POST /objetos`).
+
+### Ocorrências
+
+Base URL: `http://localhost:8082`
+
+O frontend utiliza o recurso `/ocorrencias` para:
+
+- listar ocorrências (`GET /ocorrencias`);
+- registrar uma ocorrência (`POST /ocorrencias`);
+- associar a ocorrência a um objeto e informar tipo, localização, data, observações e contato.
+
+### Reivindicações
+
+Base URL: `http://localhost:8083`
+
+O frontend utiliza o recurso `/reivindicacoes` para:
+
+- listar reivindicações (`GET /reivindicacoes`);
+- registrar uma solicitação (`POST /reivindicacoes`);
+- associar a solicitação a uma ocorrência, ao solicitante e à comprovação apresentada.
+
+Para consultar todos os endpoints implementados em cada API, consulte os controllers dentro dos respectivos módulos.
+
+## Frontend
+
+O frontend está em `frontend/` e é composto por HTML, CSS e JavaScript puro. Ele oferece:
+
+- dashboard com o estado dos três serviços;
+- cadastro de objetos e ocorrências;
+- cadastro de reivindicações;
+- chat integrado;
+- tratamento independente de falhas das APIs.
+
+O Nginx publica os arquivos estáticos na porta `80` do contêiner, mapeada para `http://localhost:3000` pelo Compose.
+
+## Chat e MCP
+
+O módulo `chat` é uma aplicação Spring Boot que utiliza:
+
+- `spring-ai-starter-model-google-genai` para o modelo Gemini;
+- `spring-ai-starter-mcp-client` para consumir os servidores MCP;
+- Spring Web MVC para expor a API utilizada pelo frontend.
+
+Os servidores MCP ficam nos módulos `objetos-mcp`, `ocorrencias-mcp` e `reivindicacoes-mcp`. Cada um encapsula o acesso ao serviço REST correspondente, permitindo que o chat consulte os dados dos três domínios por ferramentas MCP.
+
+## Persistência
+
+O projeto utiliza um único banco PostgreSQL, com schemas separados:
 
 ```text
-src/main/java/br/edu/ifba/achadosperdidos/<dominio>/
-├── controller/
-├── dto/
-├── entity/
-├── exception/
-├── repository/
-├── service/
-└── config/
+achadosperdidos
+├── objetos_service
+├── ocorrencias_service
+└── reivindicacoes_service
 ```
 
-Estrutura sugerida para cada servidor MCP:
+As APIs acessam o banco com o usuário `admin`, configurado no `docker-compose.yml`. O script `achadosperdidos.sql` é executado na inicialização do banco e cria os schemas necessários.
 
-```text
-src/main/java/br/edu/ifba/achadosperdidos/mcp/<dominio>/
-├── client/
-├── config/
-├── dto/
-└── tool/
+## Executando um módulo individualmente
+
+Entre no diretório do módulo desejado e execute:
+
+```bash
+./mvnw spring-boot:run
 ```
 
-## 13. Padrão de respostas e erros
+No Windows, utilize:
 
-Respostas esperadas:
-
-| Situação | HTTP |
-|---|---:|
-| Cadastro realizado | `201 Created` |
-| Consulta realizada | `200 OK` |
-| Atualização realizada | `200 OK` ou `204 No Content` |
-| Recurso inexistente | `404 Not Found` |
-| Dados inválidos | `400 Bad Request` |
-| Serviço dependente indisponível | `503 Service Unavailable` |
-
-Todas as APIs devem validar entradas e retornar erros em formato consistente.
-
-## 14. Ordem de implementação
-
-### Fase 1 - Fundação
-
-- [ ] Criar `.gitignore` na raiz.
-- [ ] Confirmar que cada aplicação possui seu próprio `pom.xml`.
-- [ ] Importar os seis projetos Maven no IntelliJ.
-- [ ] Definir versões compatíveis de Spring Boot e Spring AI.
-- [ ] Definir portas no `application.yml` de cada aplicação.
-
-### Fase 2 - Objetos REST
-
-- [ ] Criar entidade e enum de categoria.
-- [ ] Criar DTOs de entrada e saída.
-- [ ] Criar repository.
-- [ ] Criar service com regras de negócio.
-- [ ] Criar controller.
-- [ ] Criar tratamento de erros.
-- [ ] Validar os dados de entrada.
-- [ ] Criar testes.
-- [ ] Testar os endpoints no Postman ou `curl`.
-
-### Fase 3 - Ocorrências REST
-
-- [ ] Criar entidade e enums.
-- [ ] Implementar endpoints e filtros.
-- [ ] Validar referência ao objeto, se aplicável.
-- [ ] Criar testes.
-- [ ] Testar indisponibilidade do serviço de objetos.
-
-### Fase 4 - Reivindicações REST
-
-- [ ] Criar entidade e enum de status.
-- [ ] Implementar transições de status.
-- [ ] Impedir transições inválidas.
-- [ ] Validar referência à ocorrência, se aplicável.
-- [ ] Criar testes.
-
-### Fase 5 - Banco e Docker
-
-- [ ] Criar script para os três bancos.
-- [ ] Criar um `Dockerfile` por aplicação.
-- [ ] Criar `docker-compose.yml` na raiz.
-- [ ] Configurar rede interna do Docker.
-- [ ] Configurar variáveis de ambiente.
-- [ ] Adicionar health checks.
-- [ ] Subir toda a solução com `docker compose up -d --build`.
-
-### Fase 6 - Cliente web
-
-- [ ] Criar as três áreas do dashboard.
-- [ ] Consumir os três serviços.
-- [ ] Implementar tratamento independente de erros.
-- [ ] Implementar tentativa automática de reconexão.
-- [ ] Demonstrar um serviço parado e os demais ativos.
-
-### Fase 7 - Servidores MCP
-
-- [ ] Configurar Streamable HTTP.
-- [ ] Implementar `objetos-mcp`.
-- [ ] Implementar `ocorrencias-mcp`.
-- [ ] Implementar `reivindicacoes-mcp`.
-- [ ] Garantir pelo menos duas ferramentas por MCP.
-- [ ] Testar todos os MCPs com o MCP Inspector.
-
-### Fase 8 - Chat com IA
-
-- [ ] Escolher OpenAI ou Google AI.
-- [ ] Configurar o cliente MCP.
-- [ ] Conectar os três MCPs.
-- [ ] Disponibilizar as ferramentas para o modelo.
-- [ ] Criar interface simples para o chat.
-- [ ] Testar perguntas que usem mais de um serviço.
-
-### Fase 9 - Entrega
-
-- [ ] Revisar o código e remover segredos.
-- [ ] Atualizar instruções de execução.
-- [ ] Preparar dados de demonstração.
-- [ ] Ensaiar apresentação com duração inferior a sete minutos.
-- [ ] Gravar vídeo com imagem e som adequados.
-- [ ] Confirmar que todos os arquivos necessários estão no repositório.
-
-## 15. Plano sugerido de commits
-
-```text
-docs: adiciona documentação inicial do projeto
-feat(objetos): implementa cadastro e consulta de objetos
-test(objetos): adiciona testes do serviço de objetos
-feat(ocorrencias): implementa gerenciamento de ocorrências
-feat(reivindicacoes): implementa fluxo de reivindicações
-build: adiciona dockerfiles dos serviços
-build: adiciona orquestração com docker compose
-feat(frontend): adiciona cliente web resiliente
-feat(mcp): adiciona ferramentas MCP de objetos
-feat(mcp): adiciona ferramentas MCP de ocorrências
-feat(mcp): adiciona ferramentas MCP de reivindicações
-feat(chat): integra chat com servidores MCP
-docs: adiciona instruções de execução e apresentação
+```powershell
+.\mvnw.cmd spring-boot:run
 ```
 
-## 16. Critérios de conclusão
+Exemplo para a API de objetos:
 
-O projeto estará pronto quando:
+```bash
+cd objetos-service
+./mvnw spring-boot:run
+```
 
-- os três serviços REST estiverem funcionando em contêineres separados;
-- cada API possuir pelo menos os endpoints previstos;
-- o cliente web continuar utilizável quando um serviço for interrompido;
-- cada serviço REST tiver um MCP correspondente;
-- cada MCP acessar pelo menos dois endpoints REST;
-- o chat disponibilizar as ferramentas dos três MCPs para o modelo;
-- a solução puder ser iniciada seguindo somente as instruções deste README;
-- nenhuma chave, senha real ou arquivo sensível estiver versionado;
-- o vídeo demonstrar inicialização, cliente resiliente, MCPs e chat.
+Ao executar fora do Docker, configure uma instância PostgreSQL acessível e as propriedades de conexão esperadas pela aplicação. Para testar a solução completa, prefira o `docker compose`, pois ele configura automaticamente a rede e as URLs internas entre os serviços.
 
-## 17. Próximo passo
+## Testando a solução
 
-O próximo passo é implementar completamente o `objetos-service` antes de avançar para os demais projetos.
+Com os contêineres em execução, é possível testar as APIs com o frontend ou com `curl`. Exemplos de consulta:
 
-Sequência imediata:
+```bash
+curl http://localhost:8081/objetos
+curl http://localhost:8082/ocorrencias
+curl http://localhost:8083/reivindicacoes
+```
 
-1. revisar `objetos-service/pom.xml`;
-2. configurar porta e conexão com PostgreSQL;
-3. criar `CategoriaObjeto` e `Objeto`;
-4. criar DTOs, repository, service e controller;
-5. implementar validações e tratamento de erros;
-6. testar todos os endpoints;
-7. criar o primeiro `Dockerfile`.
+Para demonstrar a resiliência do dashboard, pare um dos serviços:
 
-## Referências
+```bash
+docker compose stop ocorrencias-service
+```
 
-- [Spring Initializr](https://start.spring.io/)
-- [Spring Boot](https://docs.spring.io/spring-boot/)
-- [Spring AI MCP](https://docs.spring.io/spring-ai/reference/api/mcp/mcp-overview.html)
-- [MCP Java SDK](https://java.sdk.modelcontextprotocol.io/)
-- [Model Context Protocol](https://modelcontextprotocol.io/)
+A área de ocorrências deverá indicar indisponibilidade, enquanto objetos e reivindicações continuam sendo carregados de forma independente. Para restaurar o serviço:
 
+```bash
+docker compose start ocorrencias-service
+```
+
+## Observações de desenvolvimento
+
+- Não versione chaves de API, senhas reais ou arquivos `.env`.
+- As URLs `localhost` usadas pelo frontend são adequadas para o acesso pelo navegador; a comunicação entre contêineres usa os nomes dos serviços Docker.
+- As aplicações REST usam PostgreSQL e JPA para persistência.
+- Os módulos MCP não possuem banco próprio: eles encaminham as consultas para as APIs REST correspondentes.
+
+## Contexto acadêmico
+
+Projeto desenvolvido por **Gui Rezende** para a disciplina **Desenvolvimento de Aplicações Orientadas a Serviços**, do curso de Pós-Graduação em Desenvolvimento Web do IFBA.
